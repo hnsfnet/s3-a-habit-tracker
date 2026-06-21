@@ -14,25 +14,16 @@ from app.services.habit_service import (
     create_habit,
     update_habit,
     delete_habit,
-    calculate_current_streak,
-    calculate_total_completed,
-    calculate_completion_rate,
-    get_habits_with_stats,
 )
 
 from app.services.habit_log_service import (
-    get_log_by_habit_and_date,
     toggle_habit_log,
     update_log_note,
-    get_log_with_note,
-    get_logs_with_notes_for_date,
-    get_recent_notes,
-    get_logs_for_date_range,
     get_user_logs_for_date,
     get_user_logs_with_notes_for_date,
+    get_recent_notes,
     get_weekly_completion,
     get_monthly_completion,
-    get_habit_logs_for_month,
 )
 
 from app.services.challenge_service import (
@@ -47,11 +38,17 @@ from app.services.challenge_service import (
 )
 
 from app.services.stats_service import (
+    calculate_current_streak,
+    calculate_total_completed,
+    calculate_completion_rate,
+    get_habits_with_stats,
+    get_habit_with_stats,
     get_30day_trend,
     get_category_breakdown,
     get_monthly_completion_rates,
     get_habit_monthly_rates,
     get_overall_stats,
+    get_dashboard_stats,
 )
 
 __all__ = [
@@ -71,18 +68,14 @@ __all__ = [
     "calculate_total_completed",
     "calculate_completion_rate",
     "get_habits_with_stats",
-    "get_log_by_habit_and_date",
+    "get_habit_with_stats",
     "toggle_habit_log",
     "update_log_note",
-    "get_log_with_note",
-    "get_logs_with_notes_for_date",
-    "get_recent_notes",
-    "get_logs_for_date_range",
     "get_user_logs_for_date",
     "get_user_logs_with_notes_for_date",
+    "get_recent_notes",
     "get_weekly_completion",
     "get_monthly_completion",
-    "get_habit_logs_for_month",
     "create_challenge",
     "get_challenges_by_user",
     "get_challenge_by_id",

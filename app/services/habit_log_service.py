@@ -1,16 +1,10 @@
 from typing import List, Optional, Dict
-from datetime import date, timedelta, datetime
+from datetime import date
 from sqlalchemy.orm import Session
 
-from app.models import HabitLog, Habit, User
+from app.models import HabitLog, Habit
 from app.schemas import HabitLogWithNote
-
-
-def get_log_by_habit_and_date(db: Session, habit_id: int, log_date: date) -> Optional[HabitLog]:
-    return db.query(HabitLog).filter(
-        HabitLog.habit_id == habit_id,
-        HabitLog.date == log_date,
-    ).first()
+from app.repositories import HabitLogRepository, HabitRepository
 
 
 def toggle_habit_log(
@@ -20,14 +14,15 @@ def toggle_habit_log(
     log_date: date,
     note: str = "",
 ) -> Optional[HabitLog]:
-    habit = db.query(Habit).filter(Habit.id == habit_id, Habit.user_id == user_id).first()
+    habit_repo = HabitRepository(db)
+    habit = habit_repo.get_by_id(habit_id, user_id)
     if not habit:
         return None
 
-    existing_log = get_log_by_habit_and_date(db, habit_id, log_date)
+    log_repo = HabitLogRepository(db)
+    existing_log = log_repo.get_by_habit_and_date(habit_id, log_date)
     if existing_log:
-        db.delete(existing_log)
-        db.commit()
+        log_repo.delete(existing_log)
         return None
     else:
         new_log = HabitLog(
@@ -36,10 +31,7 @@ def toggle_habit_log(
             completed=1,
             note=note,
         )
-        db.add(new_log)
-        db.commit()
-        db.refresh(new_log)
-        return new_log
+        return log_repo.create(new_log)
 
 
 def update_log_note(
@@ -49,114 +41,16 @@ def update_log_note(
     log_date: date,
     note: str,
 ) -> Optional[HabitLog]:
-    log = db.query(HabitLog).join(Habit).filter(
-        HabitLog.habit_id == habit_id,
-        HabitLog.date == log_date,
-        Habit.user_id == user_id,
-    ).first()
+    log_repo = HabitLogRepository(db)
+    log = log_repo.get_by_habit_date_and_user(habit_id, log_date, user_id)
     if not log:
         return None
-    log.note = note
-    db.commit()
-    db.refresh(log)
-    return log
-
-
-def get_log_with_note(
-    db: Session,
-    habit_id: int,
-    user_id: int,
-    log_date: date,
-) -> Optional[HabitLog]:
-    return db.query(HabitLog).join(Habit).filter(
-        HabitLog.habit_id == habit_id,
-        HabitLog.date == log_date,
-        Habit.user_id == user_id,
-    ).first()
-
-
-def get_logs_with_notes_for_date(
-    db: Session,
-    user_id: int,
-    log_date: date,
-) -> List[HabitLogWithNote]:
-    logs = db.query(HabitLog).join(Habit).filter(
-        Habit.user_id == user_id,
-        HabitLog.date == log_date,
-        HabitLog.completed == 1,
-    ).all()
-    
-    result = []
-    for log in logs:
-        result.append(HabitLogWithNote(
-            id=log.id,
-            habit_id=log.habit_id,
-            date=log.date,
-            completed=log.completed,
-            note=log.note or "",
-            created_at=log.created_at,
-            habit_name=log.habit.name,
-        ))
-    return result
-
-
-def get_recent_notes(
-    db: Session,
-    user_id: int,
-    habit_id: Optional[int] = None,
-    days: int = 30,
-) -> List[HabitLogWithNote]:
-    today = date.today()
-    start_date = today - timedelta(days=days - 1)
-    
-    query = db.query(HabitLog).join(Habit).filter(
-        Habit.user_id == user_id,
-        HabitLog.date >= start_date,
-        HabitLog.completed == 1,
-    )
-    
-    if habit_id:
-        query = query.filter(HabitLog.habit_id == habit_id)
-    
-    logs = query.order_by(HabitLog.date.desc()).all()
-    
-    result = []
-    for log in logs:
-        result.append(HabitLogWithNote(
-            id=log.id,
-            habit_id=log.habit_id,
-            date=log.date,
-            completed=log.completed,
-            note=log.note or "",
-            created_at=log.created_at,
-            habit_name=log.habit.name,
-        ))
-    return result
-
-
-def get_logs_for_date_range(db: Session, habit_id: int, start_date: date, end_date: date) -> List[HabitLog]:
-    return db.query(HabitLog).filter(
-        HabitLog.habit_id == habit_id,
-        HabitLog.date >= start_date,
-        HabitLog.date <= end_date,
-        HabitLog.completed == 1,
-    ).all()
+    return log_repo.update_note(log, note)
 
 
 def get_user_logs_for_date(db: Session, user_id: int, log_date: date) -> Dict[int, bool]:
-    habits = db.query(Habit).filter(Habit.user_id == user_id).all()
-    habit_ids = [h.id for h in habits]
-
-    logs = db.query(HabitLog).filter(
-        HabitLog.habit_id.in_(habit_ids),
-        HabitLog.date == log_date,
-        HabitLog.completed == 1,
-    ).all()
-
-    result = {}
-    for log in logs:
-        result[log.habit_id] = True
-    return result
+    log_repo = HabitLogRepository(db)
+    return log_repo.get_logs_for_user_and_date(user_id, log_date)
 
 
 def get_user_logs_with_notes_for_date(
@@ -164,15 +58,8 @@ def get_user_logs_with_notes_for_date(
     user_id: int,
     log_date: date,
 ) -> Dict[int, Dict]:
-    habits = db.query(Habit).filter(Habit.user_id == user_id).all()
-    habit_ids = [h.id for h in habits]
-
-    logs = db.query(HabitLog).filter(
-        HabitLog.habit_id.in_(habit_ids),
-        HabitLog.date == log_date,
-        HabitLog.completed == 1,
-    ).all()
-
+    log_repo = HabitLogRepository(db)
+    logs = log_repo.get_logs_with_notes_for_user_and_date(user_id, log_date)
     result = {}
     for log in logs:
         result[log.habit_id] = {
@@ -182,64 +69,39 @@ def get_user_logs_with_notes_for_date(
     return result
 
 
-def get_weekly_completion(db: Session, user_id: int) -> Dict[str, int]:
-    today = date.today()
-    start_of_week = today - timedelta(days=today.weekday())
-    result = {}
-
-    for i in range(7):
-        day = start_of_week + timedelta(days=i)
-        day_name = day.strftime("%A")
-        day_str = day.strftime("%Y-%m-%d")
-        count = db.query(HabitLog).join(Habit).filter(
-            Habit.user_id == user_id,
-            HabitLog.date == day,
-            HabitLog.completed == 1,
-        ).count()
-        result[day_str] = count
-
+def get_recent_notes(
+    db: Session,
+    user_id: int,
+    habit_id: Optional[int] = None,
+    days: int = 30,
+) -> List[HabitLogWithNote]:
+    log_repo = HabitLogRepository(db)
+    logs = log_repo.get_recent_notes(user_id, habit_id, days)
+    result = []
+    for log in logs:
+        result.append(HabitLogWithNote(
+            id=log.id,
+            habit_id=log.habit_id,
+            date=log.date,
+            completed=log.completed,
+            note=log.note or "",
+            created_at=log.created_at,
+            habit_name=log.habit.name,
+        ))
     return result
 
 
-def get_monthly_completion(db: Session, user_id: int, year: int = None, month: int = None) -> Dict[str, int]:
+def get_weekly_completion(db: Session, user_id: int) -> Dict[str, int]:
+    log_repo = HabitLogRepository(db)
+    return log_repo.count_for_user_and_week(user_id)
+
+
+def get_monthly_completion(
+    db: Session, user_id: int, year: int = None, month: int = None
+) -> Dict[str, int]:
     if year is None:
         year = date.today().year
     if month is None:
         month = date.today().month
-
-    result = {}
-    days_in_month = 31
-    if month == 2:
-        days_in_month = 29 if year % 4 == 0 else 28
-    elif month in [4, 6, 9, 11]:
-        days_in_month = 30
-
-    for day in range(1, days_in_month + 1):
-        try:
-            d = date(year, month, day)
-            day_str = d.strftime("%Y-%m-%d")
-            count = db.query(HabitLog).join(Habit).filter(
-                Habit.user_id == user_id,
-                HabitLog.date == d,
-                HabitLog.completed == 1,
-            ).count()
-            result[day_str] = count
-        except ValueError:
-            pass
-
-    return result
-
-
-def get_habit_logs_for_month(db: Session, habit_id: int, year: int, month: int) -> List[HabitLog]:
-    start_date = date(year, month, 1)
-    if month == 12:
-        end_date = date(year + 1, 1, 1) - timedelta(days=1)
-    else:
-        end_date = date(year, month + 1, 1) - timedelta(days=1)
-
-    return db.query(HabitLog).filter(
-        HabitLog.habit_id == habit_id,
-        HabitLog.date >= start_date,
-        HabitLog.date <= end_date,
-        HabitLog.completed == 1,
-    ).all()
+    log_repo = HabitLogRepository(db)
+    return log_repo.count_for_user_and_month(user_id, year, month)

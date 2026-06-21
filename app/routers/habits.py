@@ -12,6 +12,7 @@ from app.services import (
     update_habit,
     delete_habit,
     get_habits_with_stats,
+    get_habit_with_stats,
 )
 
 router = APIRouter(prefix="/api/habits", tags=["habits"])
@@ -47,27 +48,7 @@ def get_habit(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Habit not found",
         )
-    from app.services import (
-        calculate_current_streak,
-        calculate_total_completed,
-        calculate_completion_rate,
-    )
-    streak = calculate_current_streak(db, habit.id)
-    total = calculate_total_completed(db, habit.id)
-    rate = calculate_completion_rate(db, habit.id)
-    return HabitWithStats(
-        id=habit.id,
-        name=habit.name,
-        description=habit.description,
-        category=habit.category,
-        frequency_type=habit.frequency_type,
-        frequency_count=habit.frequency_count,
-        user_id=habit.user_id,
-        created_at=habit.created_at,
-        current_streak=streak,
-        total_completed=total,
-        completion_rate=rate,
-    )
+    return get_habit_with_stats(db, habit)
 
 
 @router.put("/{habit_id}", response_model=HabitResponse)

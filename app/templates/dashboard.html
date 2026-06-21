@@ -266,6 +266,7 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/chart_utils.js"></script>
 <script>
 const token = localStorage.getItem('habit_token');
 
@@ -279,42 +280,7 @@ function loadWeeklyChart() {
     })
     .then(r => r.json())
     .then(data => {
-        const labels = [];
-        const values = [];
-        const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-        
-        const sortedKeys = Object.keys(data).sort();
-        sortedKeys.forEach((key, i) => {
-            const d = new Date(key);
-            labels.push(dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]);
-            values.push(data[key]);
-        });
-
-        const ctx = document.getElementById('weeklyChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: '完成习惯数',
-                    data: values,
-                    backgroundColor: '#4F46E5',
-                    borderRadius: 6,
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
-                    }
-                }
-            }
-        });
+        initWeeklyBarChart('weeklyChart', data);
     });
 }
 

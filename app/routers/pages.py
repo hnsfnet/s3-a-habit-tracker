@@ -14,10 +14,9 @@ from app.services.auth_service import (
     SECRET_KEY,
     ALGORITHM,
 )
-from app.services.habit_service import get_habits_with_stats, calculate_current_streak, get_habits_by_user
-from app.services.habit_log_service import get_weekly_completion, get_user_logs_for_date
+from app.services.habit_service import get_habits_by_user
 from app.services.challenge_service import get_challenges_with_stats
-from app.services.stats_service import get_overall_stats
+from app.services.stats_service import get_overall_stats, get_dashboard_stats
 from app.schemas import UserCreate
 from app.models import User
 
@@ -143,20 +142,7 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     
     token = get_token_from_cookie(request)
     
-    habits = get_habits_with_stats(db, user.id)
-    total_habits = len(habits)
-    
-    today = date.today()
-    today_logs = get_user_logs_for_date(db, user.id, today)
-    today_completed = len(today_logs)
-    
-    weekly_data = get_weekly_completion(db, user.id)
-    week_total = sum(weekly_data.values())
-    
-    max_streak = 0
-    for habit in habits:
-        if habit.current_streak > max_streak:
-            max_streak = habit.current_streak
+    stats = get_dashboard_stats(db, user.id)
     
     return templates.TemplateResponse(
         "dashboard.html",
@@ -164,11 +150,11 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "user": user,
             "access_token": token,
-            "habits": habits,
-            "total_habits": total_habits,
-            "today_completed": today_completed,
-            "week_total": week_total,
-            "max_streak": max_streak,
+            "habits": stats["habits"],
+            "total_habits": stats["total_habits"],
+            "today_completed": stats["today_completed"],
+            "week_total": stats["week_total"],
+            "max_streak": stats["max_streak"],
         },
     )
 

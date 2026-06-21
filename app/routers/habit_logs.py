@@ -1,6 +1,6 @@
 from typing import Dict, Optional, List
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -10,12 +10,11 @@ from app.services import (
     get_current_user,
     toggle_habit_log,
     update_log_note,
-    get_weekly_completion,
-    get_monthly_completion,
     get_user_logs_for_date,
     get_user_logs_with_notes_for_date,
-    get_logs_with_notes_for_date,
     get_recent_notes,
+    get_weekly_completion,
+    get_monthly_completion,
 )
 
 router = APIRouter(prefix="/api/habit-logs", tags=["habit-logs"])
@@ -30,8 +29,10 @@ def toggle_log(
     current_user: User = Depends(get_current_user),
 ):
     result = toggle_habit_log(db, habit_id, current_user.id, log_date, note)
-    if result is None and get_user_logs_for_date(db, current_user.id, log_date).get(habit_id) is None:
-        return {"completed": False, "message": "Habit unchecked"}
+    if result is None:
+        existing_logs = get_user_logs_for_date(db, current_user.id, log_date)
+        if existing_logs.get(habit_id) is None:
+            return {"completed": False, "message": "Habit unchecked"}
     return {"completed": True, "message": "Habit checked"}
 
 
