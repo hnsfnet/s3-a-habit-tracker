@@ -156,17 +156,111 @@
         color: #111827;
     }
     .habit-check-category {
-        margin-left: auto;
+        margin-left: 8px;
         font-size: 12px;
         color: #6B7280;
         background: #F3F4F6;
         padding: 2px 8px;
         border-radius: 10px;
     }
-    .empty-habits {
+    .habit-note-section {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #F3F4F6;
+        display: none;
+    }
+    .habit-check-item.completed .habit-note-section {
+        display: block;
+    }
+    .habit-note-input {
+        width: 100%;
+        border: 1px solid #E5E7EB;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    .habit-note-input:focus {
+        outline: none;
+        border-color: #4F46E5;
+    }
+    .habit-note-display {
+        font-size: 13px;
+        color: #4B5563;
+        font-style: italic;
+    }
+    .habit-note-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    .note-save-btn {
+        background: #4F46E5;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 12px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .note-edit-btn {
+        background: transparent;
+        color: #4F46E5;
+        border: none;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .notes-history-section {
+        margin-top: 24px;
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .notes-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .note-item {
+        padding: 12px;
+        background: #F9FAFB;
+        border-radius: 8px;
+        border-left: 3px solid #4F46E5;
+    }
+    .note-item-date {
+        font-size: 12px;
+        color: #6B7280;
+        margin-bottom: 4px;
+    }
+    .note-item-habit {
+        font-weight: 500;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+    .note-item-content {
+        color: #4B5563;
+        font-size: 14px;
+    }
+    .empty-notes {
         text-align: center;
-        padding: 40px;
+        padding: 24px;
         color: #9CA3AF;
+    }
+    .calendar-day.selected {
+        background: #EEF2FF !important;
+        border-color: #4F46E5 !important;
+        color: #4F46E5 !important;
+    }
+    .habit-check-item-header {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+    .habit-check-name {
+        font-weight: 500;
+        color: #111827;
     }
 </style>
 {% endblock %}
@@ -206,6 +300,13 @@
     </div>
 </div>
 
+<div class="notes-history-section">
+    <h2 class="section-title">最近备注记录</h2>
+    <div class="notes-list" id="notesHistoryList">
+        <div class="empty-notes">加载中...</div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -216,6 +317,7 @@ let currentMonth = 0;
 let selectedDate = new Date();
 let monthlyData = {};
 let habits = [];
+let habitNotes = {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const today = new Date();
@@ -225,6 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     loadHabits();
     loadMonthlyData();
+    loadNotesHistory();
 });
 
 function loadHabits() {
@@ -247,6 +350,48 @@ function loadMonthlyData() {
         monthlyData = data;
         renderCalendar();
     });
+}
+
+function loadNotesHistory() {
+    fetch('/api/habit-logs/recent-notes?days=30', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        renderNotesHistory(data);
+    });
+}
+
+function renderNotesHistory(notes) {
+    const container = document.getElementById('notesHistoryList');
+    const notesWithContent = notes.filter(n => n.note && n.note.trim());
+    
+    if (notesWithContent.length === 0) {
+        container.innerHTML = '<div class="empty-notes">暂无备注记录</div>';
+        return;
+    }
+    
+    const habitMap = {};
+    habits.forEach(h => habitMap[h.id] = h);
+    
+    container.innerHTML = '';
+    notesWithContent.forEach(note => {
+        const habit = habitMap[note.habit_id] || { name: '未知习惯' };
+        const item = document.createElement('div');
+        item.className = 'note-item';
+        item.innerHTML = `
+            <div class="note-item-date">${note.date}</div>
+            <div class="note-item-habit">${habit.name}</div>
+            <div class="note-item-content">${escapeHtml(note.note)}</div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function renderCalendar() {
@@ -329,31 +474,93 @@ function renderHabitCheckList() {
     }
     
     const dateStrForApi = formatDate(selectedDate);
-    fetch(`/api/habit-logs/date/${dateStrForApi}`, {
+    fetch(`/api/habit-logs/date/${dateStrForApi}/with-notes`, {
         headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(r => r.json())
-    .then(completedHabits => {
+    .then(data => {
         container.innerHTML = '';
         habits.forEach(habit => {
-            const isCompleted = completedHabits[habit.id] || false;
+            const habitData = data[habit.id] || { completed: false, note: '' };
+            const isCompleted = habitData.completed;
+            const note = habitData.note || '';
+            
             const item = document.createElement('div');
             item.className = 'habit-check-item' + (isCompleted ? ' completed' : '');
-            item.onclick = () => toggleHabitLog(habit.id);
+            item.dataset.habitId = habit.id;
             
             item.innerHTML = `
-                <div class="habit-checkbox">${isCompleted ? '✓' : ''}</div>
-                <span class="habit-check-name">${habit.name}</span>
-                <span class="habit-check-category">${habit.category}</span>
+                <div class="habit-check-item-header" onclick="toggleHabitLog(${habit.id})">
+                    <div class="habit-checkbox">${isCompleted ? '✓' : ''}</div>
+                    <span class="habit-check-name">${habit.name}</span>
+                    <span class="habit-check-category">${habit.category}</span>
+                </div>
+                <div class="habit-note-section">
+                    ${isCompleted ? `
+                        ${note ? `
+                            <div class="habit-note-display" id="note-display-${habit.id}">${escapeHtml(note)}</div>
+                            <div class="habit-note-actions">
+                                <button class="note-edit-btn" onclick="event.stopPropagation(); showNoteInput(${habit.id}, '${escapeHtml(note)}')">编辑备注</button>
+                            </div>
+                        ` : `
+                            <input type="text" class="habit-note-input" id="note-input-${habit.id}" 
+                                   placeholder="添加备注...（如：今天跑了5公里）"
+                                   onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.stopPropagation(); saveNote(${habit.id});return false;}">
+                            <div class="habit-note-actions">
+                                <button class="note-save-btn" onclick="event.stopPropagation(); saveNote(${habit.id})">保存备注</button>
+                            </div>
+                        `}
+                    ` : ''}
+                </div>
             `;
             container.appendChild(item);
         });
     });
 }
 
+function showNoteInput(habitId, currentNote) {
+    const display = document.getElementById(`note-display-${habitId}`);
+    const parent = display.parentElement;
+    parent.innerHTML = `
+        <input type="text" class="habit-note-input" id="note-input-${habitId}" 
+               value="${currentNote}" onclick="event.stopPropagation()"
+               onkeydown="if(event.key==='Enter'){event.stopPropagation(); saveNote(${habitId});return false;}">
+        <div class="habit-note-actions">
+            <button class="note-save-btn" onclick="event.stopPropagation(); saveNote(${habitId})">保存备注</button>
+        </div>
+    `;
+    document.getElementById(`note-input-${habitId}`).focus();
+}
+
+function saveNote(habitId) {
+    const input = document.getElementById(`note-input-${habitId}`);
+    const note = input.value.trim();
+    const dateStr = formatDate(selectedDate);
+    
+    fetch(`/api/habit-logs/note/${habitId}/${dateStr}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ note: note })
+    })
+    .then(r => r.json())
+    .then(() => {
+        renderHabitCheckList();
+        loadNotesHistory();
+    });
+}
+
 function toggleHabitLog(habitId) {
     const dateStr = formatDate(selectedDate);
-    fetch(`/api/habit-logs/toggle/${habitId}?log_date=${dateStr}`, {
+    let note = '';
+    const input = document.getElementById(`note-input-${habitId}`);
+    if (input) {
+        note = input.value.trim();
+    }
+    
+    fetch(`/api/habit-logs/toggle/${habitId}?log_date=${dateStr}&note=${encodeURIComponent(note)}`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token }
     })
@@ -361,6 +568,7 @@ function toggleHabitLog(habitId) {
     .then(() => {
         loadMonthlyData();
         renderHabitCheckList();
+        loadNotesHistory();
     });
 }
 

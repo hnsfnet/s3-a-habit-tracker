@@ -23,11 +23,35 @@ from app.services.habit_service import (
 from app.services.habit_log_service import (
     get_log_by_habit_and_date,
     toggle_habit_log,
+    update_log_note,
+    get_log_with_note,
+    get_logs_with_notes_for_date,
+    get_recent_notes,
     get_logs_for_date_range,
     get_user_logs_for_date,
+    get_user_logs_with_notes_for_date,
     get_weekly_completion,
     get_monthly_completion,
     get_habit_logs_for_month,
+)
+
+from app.services.challenge_service import (
+    create_challenge,
+    get_challenges_by_user,
+    get_challenge_by_id,
+    update_challenge,
+    delete_challenge,
+    calculate_challenge_progress,
+    get_challenges_with_stats,
+    get_active_challenge_for_habit,
+)
+
+from app.services.stats_service import (
+    get_30day_trend,
+    get_category_breakdown,
+    get_monthly_completion_rates,
+    get_habit_monthly_rates,
+    get_overall_stats,
 )
 
 __all__ = [
@@ -49,9 +73,27 @@ __all__ = [
     "get_habits_with_stats",
     "get_log_by_habit_and_date",
     "toggle_habit_log",
+    "update_log_note",
+    "get_log_with_note",
+    "get_logs_with_notes_for_date",
+    "get_recent_notes",
     "get_logs_for_date_range",
     "get_user_logs_for_date",
+    "get_user_logs_with_notes_for_date",
     "get_weekly_completion",
     "get_monthly_completion",
     "get_habit_logs_for_month",
+    "create_challenge",
+    "get_challenges_by_user",
+    "get_challenge_by_id",
+    "update_challenge",
+    "delete_challenge",
+    "calculate_challenge_progress",
+    "get_challenges_with_stats",
+    "get_active_challenge_for_habit",
+    "get_30day_trend",
+    "get_category_breakdown",
+    "get_monthly_completion_rates",
+    "get_habit_monthly_rates",
+    "get_overall_stats",
 ]

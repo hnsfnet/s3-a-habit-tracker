@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}数据统计 - 习惯追踪{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .stat-card-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #4F46E5;
+    }
+    .stat-card-label {
+        font-size: 14px;
+        color: #6B7280;
+        margin-top: 4px;
+    }
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 24px;
+    }
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .chart-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 16px;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .chart-card.full-width {
+        grid-column: 1 / -1;
+    }
+    .habit-selector {
+        margin-bottom: 16px;
+    }
+    .habit-selector label {
+        font-size: 14px;
+        color: #374151;
+        margin-right: 8px;
+    }
+    .habit-selector select {
+        padding: 6px 12px;
+        border: 1px solid #D1D5DB;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .chart-card-3 {
+        grid-column: 1 / -1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>数据统计</h1>
+    <p class="page-desc">用数据记录你的每一点进步</p>
+</div>
+
+<div class="stats-cards" id="statsCards">
+</div>
+
+<div class="charts-grid">
+    <div class="chart-card full-width">
+        <h3 class="chart-title">📈 近30天每日打卡完成数趋势</h3>
+        <div class="chart-container">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h3 class="chart-title">🥧 各分类习惯打卡占比</h3>
+        <div class="chart-container">
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h3 class="chart-title">📉 月度完成率变化</h3>
+        <div class="habit-selector">
+            <label>选择习惯：</label>
+            <select id="habitSelect" onchange="loadMonthlyRates()">
+                <option value="all">全部习惯</option>
+                {% for habit in habits %}
+                <option value="{{ habit.id }}">{{ habit.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="chart-container">
+            <canvas id="monthlyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const token = localStorage.getItem('habit_token');
+let trendChart, categoryChart, monthlyChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadOverallStats();
+    load30DayTrend();
+    loadCategoryBreakdown();
+    loadMonthlyRates();
+});
+
+function loadOverallStats() {
+    fetch('/api/stats/overall', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        renderStatsCards(data);
+    });
+}
+
+function renderStatsCards(stats) {
+    const container = document.getElementById('statsCards');
+    container.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-card-value">${stats.total_habits}</div>
+            <div class="stat-card-label">习惯总数</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-value">${stats.total_completions}</div>
+            <div class="stat-card-label">累计完成次数</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-value">${stats.today_completed}</div>
+            <div class="stat-card-label">今日完成</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-value">${stats.week_completed}</div>
+            <div class="stat-card-label">本周完成</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-value">${stats.max_streak}</div>
+            <div class="stat-card-label">最长连续天数</div>
+        </div>
+    `;
+}
+
+function load30DayTrend() {
+    fetch('/api/stats/30day-trend', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        renderTrendChart(data);
+    });
+}
+
+function renderTrendChart(data) {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    
+    if (trendChart) {
+        trendChart.destroy();
+    }
+    
+    const labels = data.map(d => {
+        const date = new Date(d.date);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    });
+    const values = data.map(d => d.count);
+    
+    trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '每日完成数',
+                data: values,
+                backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                borderColor: '#4F46E5',
+                borderWidth: 1,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+function loadCategoryBreakdown() {
+    fetch('/api/stats/category-breakdown', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        renderCategoryChart(data);
+    });
+}
+
+function renderCategoryChart(data) {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    
+    if (categoryChart) {
+        categoryChart.destroy();
+    }
+    
+    if (data.length === 0) {
+        return;
+    }
+    
+    const categoryColors = {
+        '健康': '#10B981',
+        '学习': '#3B82F6',
+        '工作': '#F59E0B',
+        '生活': '#8B5CF6'
+    };
+    
+    const labels = data.map(d => d.category);
+    const values = data.map(d => d.count);
+    const colors = labels.map(c => categoryColors[c] || '#6B7280');
+    
+    categoryChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderColor: '#ffffff',
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const item = data[context.dataIndex];
+                            return `${item.category}: ${item.count}次 (${item.percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function loadMonthlyRates() {
+    const habitId = document.getElementById('habitSelect').value;
+    let url = '/api/stats/monthly-rates';
+    if (habitId !== 'all') {
+        url += `?habit_id=${habitId}`;
+    }
+    
+    fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        renderMonthlyChart(data);
+    });
+}
+
+function renderMonthlyChart(data) {
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    
+    if (monthlyChart) {
+        monthlyChart.destroy();
+    }
+    
+    const labels = data.map(d => d.month);
+    const values = data.map(d => d.rate);
+    
+    monthlyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '完成率 (%)',
+                data: values,
+                borderColor: '#4F46E5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

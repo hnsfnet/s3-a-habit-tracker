@@ -5,8 +5,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
-from app.models import User, Habit, HabitLog
-from app.routers import auth, habits, habit_logs
+from app.models import User, Habit, HabitLog, Challenge
+from app.routers import auth, habits, habit_logs, challenges, stats
 from app.routers.pages import router as pages_router
 
 Base.metadata.create_all(bind=engine)
@@ -28,6 +28,8 @@ templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth.router)
 app.include_router(habits.router)
 app.include_router(habit_logs.router)
+app.include_router(challenges.router)
+app.include_router(stats.router)
 app.include_router(pages_router)
 
 

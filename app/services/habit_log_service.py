@@ -3,6 +3,7 @@ from datetime import date, timedelta, datetime
 from sqlalchemy.orm import Session
 
 from app.models import HabitLog, Habit, User
+from app.schemas import HabitLogWithNote
 
 
 def get_log_by_habit_and_date(db: Session, habit_id: int, log_date: date) -> Optional[HabitLog]:
@@ -12,7 +13,13 @@ def get_log_by_habit_and_date(db: Session, habit_id: int, log_date: date) -> Opt
     ).first()
 
 
-def toggle_habit_log(db: Session, habit_id: int, user_id: int, log_date: date) -> Optional[HabitLog]:
+def toggle_habit_log(
+    db: Session,
+    habit_id: int,
+    user_id: int,
+    log_date: date,
+    note: str = "",
+) -> Optional[HabitLog]:
     habit = db.query(Habit).filter(Habit.id == habit_id, Habit.user_id == user_id).first()
     if not habit:
         return None
@@ -27,11 +34,104 @@ def toggle_habit_log(db: Session, habit_id: int, user_id: int, log_date: date) -
             habit_id=habit_id,
             date=log_date,
             completed=1,
+            note=note,
         )
         db.add(new_log)
         db.commit()
         db.refresh(new_log)
         return new_log
+
+
+def update_log_note(
+    db: Session,
+    habit_id: int,
+    user_id: int,
+    log_date: date,
+    note: str,
+) -> Optional[HabitLog]:
+    log = db.query(HabitLog).join(Habit).filter(
+        HabitLog.habit_id == habit_id,
+        HabitLog.date == log_date,
+        Habit.user_id == user_id,
+    ).first()
+    if not log:
+        return None
+    log.note = note
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+def get_log_with_note(
+    db: Session,
+    habit_id: int,
+    user_id: int,
+    log_date: date,
+) -> Optional[HabitLog]:
+    return db.query(HabitLog).join(Habit).filter(
+        HabitLog.habit_id == habit_id,
+        HabitLog.date == log_date,
+        Habit.user_id == user_id,
+    ).first()
+
+
+def get_logs_with_notes_for_date(
+    db: Session,
+    user_id: int,
+    log_date: date,
+) -> List[HabitLogWithNote]:
+    logs = db.query(HabitLog).join(Habit).filter(
+        Habit.user_id == user_id,
+        HabitLog.date == log_date,
+        HabitLog.completed == 1,
+    ).all()
+    
+    result = []
+    for log in logs:
+        result.append(HabitLogWithNote(
+            id=log.id,
+            habit_id=log.habit_id,
+            date=log.date,
+            completed=log.completed,
+            note=log.note or "",
+            created_at=log.created_at,
+            habit_name=log.habit.name,
+        ))
+    return result
+
+
+def get_recent_notes(
+    db: Session,
+    user_id: int,
+    habit_id: Optional[int] = None,
+    days: int = 30,
+) -> List[HabitLogWithNote]:
+    today = date.today()
+    start_date = today - timedelta(days=days - 1)
+    
+    query = db.query(HabitLog).join(Habit).filter(
+        Habit.user_id == user_id,
+        HabitLog.date >= start_date,
+        HabitLog.completed == 1,
+    )
+    
+    if habit_id:
+        query = query.filter(HabitLog.habit_id == habit_id)
+    
+    logs = query.order_by(HabitLog.date.desc()).all()
+    
+    result = []
+    for log in logs:
+        result.append(HabitLogWithNote(
+            id=log.id,
+            habit_id=log.habit_id,
+            date=log.date,
+            completed=log.completed,
+            note=log.note or "",
+            created_at=log.created_at,
+            habit_name=log.habit.name,
+        ))
+    return result
 
 
 def get_logs_for_date_range(db: Session, habit_id: int, start_date: date, end_date: date) -> List[HabitLog]:
@@ -56,6 +156,29 @@ def get_user_logs_for_date(db: Session, user_id: int, log_date: date) -> Dict[in
     result = {}
     for log in logs:
         result[log.habit_id] = True
+    return result
+
+
+def get_user_logs_with_notes_for_date(
+    db: Session,
+    user_id: int,
+    log_date: date,
+) -> Dict[int, Dict]:
+    habits = db.query(Habit).filter(Habit.user_id == user_id).all()
+    habit_ids = [h.id for h in habits]
+
+    logs = db.query(HabitLog).filter(
+        HabitLog.habit_id.in_(habit_ids),
+        HabitLog.date == log_date,
+        HabitLog.completed == 1,
+    ).all()
+
+    result = {}
+    for log in logs:
+        result[log.habit_id] = {
+            "completed": True,
+            "note": log.note or "",
+        }
     return result
 
 

@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}习惯挑战 - 习惯追踪{% endblock %}
+
+{% block extra_css %}
+<style>
+    .challenge-form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 24px;
+    }
+    .challenge-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-end;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .form-group label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
+    }
+    .form-group input, .form-group select {
+        padding: 8px 12px;
+        border: 1px solid #D1D5DB;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #4F46E5;
+    }
+    .challenges-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    .challenge-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        position: relative;
+        overflow: hidden;
+    }
+    .challenge-card.completed {
+        border: 2px solid #10B981;
+    }
+    .challenge-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+    .challenge-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+    .challenge-habit {
+        font-size: 14px;
+        color: #6B7280;
+    }
+    .challenge-badge {
+        background: linear-gradient(135deg, #FCD34D, #F59E0B);
+        color: #92400E;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .challenge-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .stat-item {
+        text-align: center;
+        padding: 12px;
+        background: #F9FAFB;
+        border-radius: 8px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #4F46E5;
+    }
+    .stat-label {
+        font-size: 12px;
+        color: #6B7280;
+        margin-top: 4px;
+    }
+    .progress-container {
+        margin-bottom: 16px;
+    }
+    .progress-bar {
+        width: 100%;
+        height: 12px;
+        background: #E5E7EB;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4F46E5, #7C3AED);
+        border-radius: 6px;
+        transition: width 0.3s ease;
+    }
+    .progress-text {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: #6B7280;
+        margin-top: 8px;
+    }
+    .daily-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 12px;
+    }
+    .day-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    .day-dot.completed {
+        background: #10B981;
+        color: white;
+    }
+    .day-dot.missed {
+        background: #FEE2E2;
+        color: #DC2626;
+    }
+    .day-dot.pending {
+        background: #E5E7EB;
+        color: #6B7280;
+    }
+    .challenge-dates {
+        font-size: 13px;
+        color: #6B7280;
+        margin-top: 12px;
+    }
+    .challenge-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+    }
+    .delete-btn {
+        background: #FEE2E2;
+        color: #DC2626;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    .delete-btn:hover {
+        background: #FECACA;
+    }
+    .empty-challenges {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9CA3AF;
+    }
+    .empty-challenges-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>习惯挑战</h1>
+    <p class="page-desc">设定挑战目标，见证自己的坚持与成长</p>
+</div>
+
+<div class="challenge-form-section">
+    <h2 class="section-title">创建新挑战</h2>
+    <div class="challenge-form">
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+            <label>挑战名称</label>
+            <input type="text" id="challengeName" placeholder="如：连续30天阅读">
+        </div>
+        <div class="form-group">
+            <label>选择习惯</label>
+            <select id="challengeHabit">
+                {% for habit in habits %}
+                <option value="{{ habit.id }}">{{ habit.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>挑战天数</label>
+            <input type="number" id="challengeDays" value="30" min="1" max="365">
+        </div>
+        <div class="form-group">
+            <label>开始日期</label>
+            <input type="date" id="challengeStartDate">
+        </div>
+        <button class="btn btn-primary" onclick="createChallenge()">开始挑战</button>
+    </div>
+</div>
+
+<div class="challenges-list" id="challengesList">
+    <div class="empty-challenges">
+        <div class="empty-challenges-icon">🏃</div>
+        <p>还没有挑战，创建一个开始吧！</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const token = localStorage.getItem('habit_token');
+let challenges = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('challengeStartDate').value = today;
+    loadChallenges();
+});
+
+function loadChallenges() {
+    fetch('/api/challenges/', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        challenges = data;
+        renderChallenges();
+    });
+}
+
+function createChallenge() {
+    const name = document.getElementById('challengeName').value.trim();
+    const habitId = parseInt(document.getElementById('challengeHabit').value);
+    const targetDays = parseInt(document.getElementById('challengeDays').value);
+    const startDate = document.getElementById('challengeStartDate').value;
+    
+    if (!name) {
+        alert('请输入挑战名称');
+        return;
+    }
+    if (!habitId) {
+        alert('请选择习惯');
+        return;
+    }
+    if (!targetDays || targetDays < 1) {
+        alert('请输入有效的挑战天数');
+        return;
+    }
+    if (!startDate) {
+        alert('请选择开始日期');
+        return;
+    }
+    
+    fetch('/api/challenges/', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: name,
+            habit_id: habitId,
+            target_days: targetDays,
+            start_date: startDate
+        })
+    })
+    .then(r => {
+        if (r.ok) {
+            document.getElementById('challengeName').value = '';
+            document.getElementById('challengeDays').value = '30';
+            loadChallenges();
+        } else {
+            alert('创建失败，请重试');
+        }
+    });
+}
+
+function deleteChallenge(id) {
+    if (!confirm('确定要删除这个挑战吗？')) return;
+    
+    fetch(`/api/challenges/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => {
+        if (r.ok) {
+            loadChallenges();
+        }
+    });
+}
+
+function renderChallenges() {
+    const container = document.getElementById('challengesList');
+    
+    if (challenges.length === 0) {
+        container.innerHTML = `
+            <div class="empty-challenges">
+                <div class="empty-challenges-icon">🏃</div>
+                <p>还没有挑战，创建一个开始吧！</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    challenges.forEach(challenge => {
+        const card = document.createElement('div');
+        card.className = 'challenge-card' + (challenge.is_completed ? ' completed' : '');
+        
+        const dailyStatusHtml = generateDailyStatusHtml(challenge);
+        
+        card.innerHTML = `
+            <div class="challenge-header">
+                <div>
+                    <div class="challenge-title">${escapeHtml(challenge.name)}</div>
+                    <div class="challenge-habit">习惯：${escapeHtml(challenge.habit_name || '')} · 目标${challenge.target_days}天</div>
+                </div>
+                ${challenge.is_completed ? '<div class="challenge-badge">🏆 挑战成功</div>' : ''}
+            </div>
+            
+            <div class="challenge-stats">
+                <div class="stat-item">
+                    <div class="stat-value">${challenge.current_progress}</div>
+                    <div class="stat-label">已完成</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${challenge.current_streak}</div>
+                    <div class="stat-label">当前连续</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${challenge.remaining_days}</div>
+                    <div class="stat-label">剩余天数</div>
+                </div>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${Math.min(challenge.progress_percent, 100)}%"></div>
+                </div>
+                <div class="progress-text">
+                    <span>进度</span>
+                    <span>${challenge.progress_percent}%</span>
+                </div>
+            </div>
+            
+            <div class="challenge-dates">
+                📅 ${challenge.start_date} ~ ${challenge.end_date}
+                ${challenge.is_completed && challenge.completed_date ? ` · ✅ 完成于 ${challenge.completed_date}` : ''}
+            </div>
+            
+            <div class="daily-status">
+                ${dailyStatusHtml}
+            </div>
+            
+            <div class="challenge-actions">
+                <button class="delete-btn" onclick="deleteChallenge(${challenge.id})">删除挑战</button>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+function generateDailyStatusHtml(challenge) {
+    const dailyStatus = challenge.daily_status || {};
+    const dates = Object.keys(dailyStatus).sort();
+    
+    if (dates.length === 0) return '';
+    
+    return dates.slice(-30).map(date => {
+        const completed = dailyStatus[date];
+        const dayNum = new Date(date).getDate();
+        return `<div class="day-dot ${completed ? 'completed' : 'missed'}" title="${date}">${dayNum}</div>`;
+    }).join('');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

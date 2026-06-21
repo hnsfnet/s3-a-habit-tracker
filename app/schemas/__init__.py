@@ -9,6 +9,15 @@ from app.schemas.schemas import (
     HabitWithStats,
     HabitLogCreate,
     HabitLogResponse,
+    HabitLogUpdateNote,
+    HabitLogWithNote,
+    ChallengeCreate,
+    ChallengeUpdate,
+    ChallengeResponse,
+    ChallengeWithStats,
+    Stats30DayTrend,
+    StatsCategoryBreakdown,
+    StatsMonthlyRate,
 )
 
 __all__ = [
@@ -22,4 +31,13 @@ __all__ = [
     "HabitWithStats",
     "HabitLogCreate",
     "HabitLogResponse",
+    "HabitLogUpdateNote",
+    "HabitLogWithNote",
+    "ChallengeCreate",
+    "ChallengeUpdate",
+    "ChallengeResponse",
+    "ChallengeWithStats",
+    "Stats30DayTrend",
+    "StatsCategoryBreakdown",
+    "StatsMonthlyRate",
 ]

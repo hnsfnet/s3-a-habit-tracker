@@ -14,8 +14,10 @@ from app.services.auth_service import (
     SECRET_KEY,
     ALGORITHM,
 )
-from app.services.habit_service import get_habits_with_stats, calculate_current_streak
+from app.services.habit_service import get_habits_with_stats, calculate_current_streak, get_habits_by_user
 from app.services.habit_log_service import get_weekly_completion, get_user_logs_for_date
+from app.services.challenge_service import get_challenges_with_stats
+from app.services.stats_service import get_overall_stats
 from app.schemas import UserCreate
 from app.models import User
 
@@ -178,8 +180,39 @@ async def calendar_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=302)
     
     token = get_token_from_cookie(request)
+    habits = get_habits_by_user(db, user.id)
     
     return templates.TemplateResponse(
         "calendar.html",
-        {"request": request, "user": user, "access_token": token},
+        {"request": request, "user": user, "access_token": token, "habits": habits},
+    )
+
+
+@router.get("/challenges", response_class=HTMLResponse)
+async def challenges_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    token = get_token_from_cookie(request)
+    habits = get_habits_by_user(db, user.id)
+    
+    return templates.TemplateResponse(
+        "challenges.html",
+        {"request": request, "user": user, "access_token": token, "habits": habits},
+    )
+
+
+@router.get("/stats", response_class=HTMLResponse)
+async def stats_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    token = get_token_from_cookie(request)
+    habits = get_habits_by_user(db, user.id)
+    
+    return templates.TemplateResponse(
+        "stats.html",
+        {"request": request, "user": user, "access_token": token, "habits": habits},
     )

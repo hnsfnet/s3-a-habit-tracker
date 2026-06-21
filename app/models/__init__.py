@@ -1,3 +1,3 @@
-from app.models.models import User, Habit, HabitLog
+from app.models.models import User, Habit, HabitLog, Challenge
 
-__all__ = ["User", "Habit", "HabitLog"]
+__all__ = ["User", "Habit", "HabitLog", "Challenge"]
