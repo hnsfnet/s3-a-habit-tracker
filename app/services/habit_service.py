@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import date, timedelta, datetime
 from sqlalchemy.orm import Session
 
-from app.models import Habit, HabitLog, User
+from app.models import Habit, HabitLog, User, Challenge
 from app.schemas import HabitCreate, HabitUpdate, HabitWithStats
 
 
@@ -45,6 +45,10 @@ def delete_habit(db: Session, habit_id: int, user_id: int) -> bool:
     habit = get_habit_by_id(db, habit_id, user_id)
     if not habit:
         return False
+    
+    db.query(HabitLog).filter(HabitLog.habit_id == habit_id).delete()
+    db.query(Challenge).filter(Challenge.habit_id == habit_id).delete()
+    
     db.delete(habit)
     db.commit()
     return True
@@ -53,31 +57,29 @@ def delete_habit(db: Session, habit_id: int, user_id: int) -> bool:
 def calculate_current_streak(db: Session, habit_id: int) -> int:
     today = date.today()
     streak = 0
-    current_date = today
-
+    check_date = today
+    
+    log_today = db.query(HabitLog).filter(
+        HabitLog.habit_id == habit_id,
+        HabitLog.date == today,
+        HabitLog.completed == 1,
+    ).first()
+    
+    if not log_today:
+        check_date = today - timedelta(days=1)
+    
     while True:
         log = db.query(HabitLog).filter(
             HabitLog.habit_id == habit_id,
-            HabitLog.date == current_date,
+            HabitLog.date == check_date,
             HabitLog.completed == 1,
         ).first()
         if log:
             streak += 1
-            current_date -= timedelta(days=1)
+            check_date -= timedelta(days=1)
         else:
-            if current_date == today:
-                yesterday = today - timedelta(days=1)
-                log_yesterday = db.query(HabitLog).filter(
-                    HabitLog.habit_id == habit_id,
-                    HabitLog.date == yesterday,
-                    HabitLog.completed == 1,
-                ).first()
-                if not log_yesterday:
-                    return 0
-                current_date = yesterday
-            else:
-                break
-
+            break
+    
     return streak
 
 

@@ -239,16 +239,24 @@ function renderCategoryChart(data) {
         return;
     }
     
-    const categoryColors = {
-        '健康': '#10B981',
-        '学习': '#3B82F6',
-        '工作': '#F59E0B',
-        '生活': '#8B5CF6'
-    };
+    const colorPalette = [
+        '#10B981',
+        '#3B82F6',
+        '#F59E0B',
+        '#8B5CF6',
+        '#EF4444',
+        '#06B6D4',
+        '#F97316',
+        '#EC4899',
+        '#14B8A6',
+        '#6366F1',
+        '#84CC16',
+        '#F43F5E',
+    ];
     
     const labels = data.map(d => d.category);
     const values = data.map(d => d.count);
-    const colors = labels.map(c => categoryColors[c] || '#6B7280');
+    const colors = labels.map((_, i) => colorPalette[i % colorPalette.length]);
     
     categoryChart = new Chart(ctx, {
         type: 'pie',
@@ -266,7 +274,17 @@ function renderCategoryChart(data) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'right'
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: {
+                            size: 12
+                        },
+                        boxWidth: 10,
+                    },
+                    maxHeight: 120,
                 },
                 tooltip: {
                     callbacks: {

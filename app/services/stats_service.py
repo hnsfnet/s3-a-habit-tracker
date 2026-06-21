@@ -166,6 +166,16 @@ def get_overall_stats(db: Session, user_id: int) -> Dict:
     for habit in habits:
         streak = 0
         check_date = today
+        
+        log_today = db.query(HabitLog).filter(
+            HabitLog.habit_id == habit.id,
+            HabitLog.date == today,
+            HabitLog.completed == 1,
+        ).first()
+        
+        if not log_today:
+            check_date = today - timedelta(days=1)
+        
         while True:
             log = db.query(HabitLog).filter(
                 HabitLog.habit_id == habit.id,
@@ -177,6 +187,7 @@ def get_overall_stats(db: Session, user_id: int) -> Dict:
                 check_date -= timedelta(days=1)
             else:
                 break
+        
         if streak > max_streak:
             max_streak = streak
     
