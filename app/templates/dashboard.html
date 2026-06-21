@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 习惯追踪{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        text-align: center;
+    }
+    .stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: #4F46E5;
+        margin: 8px 0;
+    }
+    .stat-label {
+        color: #6B7280;
+        font-size: 14px;
+    }
+    .habits-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .habits-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .habit-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: box-shadow 0.2s;
+    }
+    .habit-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .habit-info {
+        flex: 1;
+    }
+    .habit-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+    .habit-desc {
+        color: #6B7280;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    .habit-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 13px;
+    }
+    .habit-category {
+        background: #EEF2FF;
+        color: #4F46E5;
+        padding: 2px 10px;
+        border-radius: 12px;
+    }
+    .habit-frequency {
+        color: #6B7280;
+    }
+    .habit-stats {
+        display: flex;
+        gap: 24px;
+        text-align: center;
+    }
+    .habit-stat-item .value {
+        font-size: 20px;
+        font-weight: 600;
+        color: #111827;
+    }
+    .habit-stat-item .label {
+        font-size: 12px;
+        color: #6B7280;
+    }
+    .habit-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: 20px;
+    }
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 6px;
+        color: #6B7280;
+        transition: all 0.2s;
+    }
+    .btn-icon:hover {
+        background: #F3F4F6;
+        color: #111827;
+    }
+    .chart-container {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 32px;
+    }
+    .chart-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: #111827;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9CA3AF;
+    }
+    .empty-state h3 {
+        color: #6B7280;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>你好，{{ user.username }} 👋</h1>
+    <p class="page-desc">坚持每一天，成就更好的自己</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">习惯总数</div>
+        <div class="stat-number">{{ total_habits }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">今日已完成</div>
+        <div class="stat-number">{{ today_completed }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">本周完成</div>
+        <div class="stat-number">{{ week_total }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">最长连续</div>
+        <div class="stat-number">{{ max_streak }}</div>
+    </div>
+</div>
+
+<div class="chart-container">
+    <h2 class="chart-title">本周打卡情况</h2>
+    <canvas id="weeklyChart" height="100"></canvas>
+</div>
+
+<div class="habits-header">
+    <h2 class="section-title">我的习惯</h2>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ 添加习惯</button>
+</div>
+
+{% if habits %}
+<div class="habits-list">
+    {% for habit in habits %}
+    <div class="habit-card">
+        <div class="habit-info">
+            <div class="habit-name">{{ habit.name }}</div>
+            {% if habit.description %}
+            <div class="habit-desc">{{ habit.description }}</div>
+            {% endif %}
+            <div class="habit-meta">
+                <span class="habit-category">{{ habit.category }}</span>
+                <span class="habit-frequency">
+                    {% if habit.frequency_type == 'daily' %}
+                        每天
+                    {% elif habit.frequency_type == 'weekly' %}
+                        每周 {{ habit.frequency_count }} 次
+                    {% elif habit.frequency_type == 'monthly' %}
+                        每月 {{ habit.frequency_count }} 次
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="habit-stats">
+            <div class="habit-stat-item">
+                <div class="value">{{ habit.current_streak }}</div>
+                <div class="label">连续天数</div>
+            </div>
+            <div class="habit-stat-item">
+                <div class="value">{{ habit.total_completed }}</div>
+                <div class="label">总完成</div>
+            </div>
+            <div class="habit-stat-item">
+                <div class="value">{{ habit.completion_rate }}%</div>
+                <div class="label">完成率</div>
+            </div>
+        </div>
+        <div class="habit-actions">
+            <button class="btn-icon" onclick="editHabit({{ habit.id }})" title="编辑">✏️</button>
+            <button class="btn-icon" onclick="deleteHabit({{ habit.id }})" title="删除">🗑️</button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>还没有习惯</h3>
+    <p>点击「添加习惯」开始你的第一个习惯吧</p>
+</div>
+{% endif %}
+
+<div id="habitModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">添加习惯</h3>
+            <button class="btn-icon" onclick="closeModal()">✕</button>
+        </div>
+        <form id="habitForm" class="modal-form">
+            <input type="hidden" id="habitId">
+            <div class="form-group">
+                <label>习惯名称</label>
+                <input type="text" id="habitName" required placeholder="例如：早起、阅读、运动">
+            </div>
+            <div class="form-group">
+                <label>描述（可选）</label>
+                <textarea id="habitDesc" rows="2" placeholder="简单描述一下这个习惯"></textarea>
+            </div>
+            <div class="form-group">
+                <label>分类</label>
+                <select id="habitCategory">
+                    <option value="健康">健康</option>
+                    <option value="学习">学习</option>
+                    <option value="工作">工作</option>
+                    <option value="生活">生活</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>目标频率</label>
+                <div style="display: flex; gap: 8px;">
+                    <select id="habitFreqType" onchange="toggleFreqCount()">
+                        <option value="daily">每天</option>
+                        <option value="weekly">每周 N 次</option>
+                        <option value="monthly">每月 N 次</option>
+                    </select>
+                    <input type="number" id="habitFreqCount" value="1" min="1" style="width: 80px; display: none;">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">保存</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const token = localStorage.getItem('habit_token');
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadWeeklyChart();
+});
+
+function loadWeeklyChart() {
+    fetch('/api/habit-logs/weekly', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const labels = [];
+        const values = [];
+        const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        
+        const sortedKeys = Object.keys(data).sort();
+        sortedKeys.forEach((key, i) => {
+            const d = new Date(key);
+            labels.push(dayNames[d.getDay() === 0 ? 6 : d.getDay() - 1]);
+            values.push(data[key]);
+        });
+
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '完成习惯数',
+                    data: values,
+                    backgroundColor: '#4F46E5',
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    });
+}
+
+function toggleFreqCount() {
+    const type = document.getElementById('habitFreqType').value;
+    const countInput = document.getElementById('habitFreqCount');
+    countInput.style.display = (type === 'daily') ? 'none' : 'inline-block';
+}
+
+function openCreateModal() {
+    document.getElementById('modalTitle').textContent = '添加习惯';
+    document.getElementById('habitId').value = '';
+    document.getElementById('habitName').value = '';
+    document.getElementById('habitDesc').value = '';
+    document.getElementById('habitCategory').value = '健康';
+    document.getElementById('habitFreqType').value = 'daily';
+    document.getElementById('habitFreqCount').value = 1;
+    toggleFreqCount();
+    document.getElementById('habitModal').style.display = 'flex';
+}
+
+function editHabit(id) {
+    fetch('/api/habits/' + id, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(habit => {
+        document.getElementById('modalTitle').textContent = '编辑习惯';
+        document.getElementById('habitId').value = habit.id;
+        document.getElementById('habitName').value = habit.name;
+        document.getElementById('habitDesc').value = habit.description || '';
+        document.getElementById('habitCategory').value = habit.category;
+        document.getElementById('habitFreqType').value = habit.frequency_type;
+        document.getElementById('habitFreqCount').value = habit.frequency_count;
+        toggleFreqCount();
+        document.getElementById('habitModal').style.display = 'flex';
+    });
+}
+
+function closeModal() {
+    document.getElementById('habitModal').style.display = 'none';
+}
+
+document.getElementById('habitForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('habitId').value;
+    const data = {
+        name: document.getElementById('habitName').value,
+        description: document.getElementById('habitDesc').value,
+        category: document.getElementById('habitCategory').value,
+        frequency_type: document.getElementById('habitFreqType').value,
+        frequency_count: parseInt(document.getElementById('habitFreqCount').value) || 1,
+    };
+
+    const url = id ? '/api/habits/' + id : '/api/habits/';
+    const method = id ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => {
+        if (r.ok) {
+            window.location.reload();
+        } else {
+            alert('保存失败');
+        }
+    });
+});
+
+function deleteHabit(id) {
+    if (confirm('确定要删除这个习惯吗？')) {
+        fetch('/api/habits/' + id, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(r => {
+            if (r.ok) {
+                window.location.reload();
+            }
+        });
+    }
+}
+
+window.onclick = function(e) {
+    const modal = document.getElementById('habitModal');
+    if (e.target === modal) {
+        closeModal();
+    }
+};
+</script>
+{% endblock %}

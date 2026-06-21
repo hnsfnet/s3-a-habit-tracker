@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - 习惯追踪{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">欢迎回来</h1>
+        <p class="auth-subtitle">登录你的账号继续追踪习惯</p>
+        
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST" action="/login" class="auth-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required placeholder="请输入用户名" autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required placeholder="请输入密码">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">登录</button>
+        </form>
+        
+        <div class="auth-footer">
+            还没有账号？ <a href="/register">立即注册</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

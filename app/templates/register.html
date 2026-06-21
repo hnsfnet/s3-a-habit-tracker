@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}注册 - 习惯追踪{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">创建账号</h1>
+        <p class="auth-subtitle">开始你的习惯养成之旅</p>
+        
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST" action="/register" class="auth-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required placeholder="请输入用户名" autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required placeholder="请输入密码" minlength="6">
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">确认密码</label>
+                <input type="password" id="confirm_password" name="confirm_password" required placeholder="请再次输入密码">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">注册</button>
+        </form>
+        
+        <div class="auth-footer">
+            已有账号？ <a href="/login">立即登录</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

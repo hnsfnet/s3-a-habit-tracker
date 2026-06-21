@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}日历打卡 - 习惯追踪{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+    .calendar-nav {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .calendar-nav button {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.2s;
+    }
+    .calendar-nav button:hover {
+        background: #F9FAFB;
+    }
+    .calendar-month {
+        font-size: 20px;
+        font-weight: 600;
+        color: #111827;
+        min-width: 160px;
+        text-align: center;
+    }
+    .calendar-grid {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 24px;
+    }
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+    .weekday {
+        text-align: center;
+        font-weight: 500;
+        color: #6B7280;
+        font-size: 14px;
+        padding: 8px;
+    }
+    .calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+    .calendar-day {
+        aspect-ratio: 1;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+        position: relative;
+        border: 2px solid transparent;
+    }
+    .calendar-day:hover {
+        background: #F3F4F6;
+    }
+    .calendar-day.other-month {
+        color: #D1D5DB;
+        cursor: default;
+    }
+    .calendar-day.other-month:hover {
+        background: transparent;
+    }
+    .calendar-day.today {
+        border-color: #4F46E5;
+    }
+    .calendar-day.completed-1 { background: #DCFCE7; color: #166534; }
+    .calendar-day.completed-2 { background: #BBF7D0; color: #166534; }
+    .calendar-day.completed-3 { background: #86EFAC; color: #166534; }
+    .calendar-day.completed-4 { background: #4ADE80; color: #064E3B; }
+    .calendar-day.completed-5 { background: #22C55E; color: #fff; }
+    .calendar-day.completed-6 { background: #16A34A; color: #fff; }
+    .calendar-day.completed-more { background: #15803D; color: #fff; }
+    
+    .habits-check-section {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: #111827;
+    }
+    .date-display {
+        color: #6B7280;
+        margin-bottom: 16px;
+    }
+    .habit-check-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .habit-check-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #E5E7EB;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .habit-check-item:hover {
+        border-color: #A5B4FC;
+        background: #F5F3FF;
+    }
+    .habit-check-item.completed {
+        background: #ECFDF5;
+        border-color: #6EE7B7;
+    }
+    .habit-check-item.completed .habit-check-name {
+        text-decoration: line-through;
+        color: #6B7280;
+    }
+    .habit-checkbox {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #D1D5DB;
+        border-radius: 4px;
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+    .habit-check-item.completed .habit-checkbox {
+        background: #10B981;
+        border-color: #10B981;
+        color: white;
+    }
+    .habit-check-name {
+        font-weight: 500;
+        color: #111827;
+    }
+    .habit-check-category {
+        margin-left: auto;
+        font-size: 12px;
+        color: #6B7280;
+        background: #F3F4F6;
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+    .empty-habits {
+        text-align: center;
+        padding: 40px;
+        color: #9CA3AF;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>日历打卡</h1>
+    <p class="page-desc">记录每一天的习惯完成情况</p>
+</div>
+
+<div class="calendar-header">
+    <div class="calendar-nav">
+        <button onclick="prevMonth()">←</button>
+        <span class="calendar-month" id="calendarMonth"></span>
+        <button onclick="nextMonth()">→</button>
+    </div>
+    <button class="btn btn-outline" onclick="goToToday()">今天</button>
+</div>
+
+<div class="calendar-grid">
+    <div class="calendar-weekdays">
+        <div class="weekday">日</div>
+        <div class="weekday">一</div>
+        <div class="weekday">二</div>
+        <div class="weekday">三</div>
+        <div class="weekday">四</div>
+        <div class="weekday">五</div>
+        <div class="weekday">六</div>
+    </div>
+    <div class="calendar-days" id="calendarDays"></div>
+</div>
+
+<div class="habits-check-section">
+    <h2 class="section-title">今日习惯</h2>
+    <div class="date-display" id="selectedDateDisplay"></div>
+    <div class="habit-check-list" id="habitCheckList">
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const token = localStorage.getItem('habit_token');
+let currentYear = 0;
+let currentMonth = 0;
+let selectedDate = new Date();
+let monthlyData = {};
+let habits = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
+    selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    loadHabits();
+    loadMonthlyData();
+});
+
+function loadHabits() {
+    fetch('/api/habits/', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        habits = data;
+        renderHabitCheckList();
+    });
+}
+
+function loadMonthlyData() {
+    fetch(`/api/habit-logs/monthly?year=${currentYear}&month=${currentMonth + 1}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        monthlyData = data;
+        renderCalendar();
+    });
+}
+
+function renderCalendar() {
+    const daysContainer = document.getElementById('calendarDays');
+    daysContainer.innerHTML = '';
+    
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const startDay = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+    
+    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
+    for (let i = startDay - 1; i >= 0; i--) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'calendar-day other-month';
+        dayDiv.textContent = prevMonthLastDay - i;
+        daysContainer.appendChild(dayDiv);
+    }
+    
+    const today = new Date();
+    const todayStr = formatDate(today);
+    const selectedStr = formatDate(selectedDate);
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(currentYear, currentMonth, day);
+        const dateStr = formatDate(dateObj);
+        const count = monthlyData[dateStr] || 0;
+        
+        const dayDiv = document.createElement('div');
+        let className = 'calendar-day';
+        if (dateStr === todayStr) className += ' today';
+        if (count > 0) {
+            if (count >= 7) className += ' completed-more';
+            else className += ' completed-' + count;
+        }
+        if (dateStr === selectedStr) className += ' selected';
+        dayDiv.className = className;
+        dayDiv.textContent = day;
+        dayDiv.onclick = () => selectDate(dateObj);
+        
+        daysContainer.appendChild(dayDiv);
+    }
+    
+    const totalCells = startDay + daysInMonth;
+    const remaining = (7 - (totalCells % 7)) % 7;
+    for (let i = 1; i <= remaining; i++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'calendar-day other-month';
+        dayDiv.textContent = i;
+        daysContainer.appendChild(dayDiv);
+    }
+    
+    document.getElementById('calendarMonth').textContent = 
+        `${currentYear}年 ${currentMonth + 1}月`;
+}
+
+function selectDate(date) {
+    selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    renderCalendar();
+    renderHabitCheckList();
+}
+
+function formatDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function renderHabitCheckList() {
+    const container = document.getElementById('habitCheckList');
+    const dateStr = formatDate(selectedDate);
+    
+    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+    document.getElementById('selectedDateDisplay').textContent = selectedDate.toLocaleDateString('zh-CN', options);
+    
+    if (habits.length === 0) {
+        container.innerHTML = '<div class="empty-habits">还没有习惯，去添加一个吧</div>';
+        return;
+    }
+    
+    const dateStrForApi = formatDate(selectedDate);
+    fetch(`/api/habit-logs/date/${dateStrForApi}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(completedHabits => {
+        container.innerHTML = '';
+        habits.forEach(habit => {
+            const isCompleted = completedHabits[habit.id] || false;
+            const item = document.createElement('div');
+            item.className = 'habit-check-item' + (isCompleted ? ' completed' : '');
+            item.onclick = () => toggleHabitLog(habit.id);
+            
+            item.innerHTML = `
+                <div class="habit-checkbox">${isCompleted ? '✓' : ''}</div>
+                <span class="habit-check-name">${habit.name}</span>
+                <span class="habit-check-category">${habit.category}</span>
+            `;
+            container.appendChild(item);
+        });
+    });
+}
+
+function toggleHabitLog(habitId) {
+    const dateStr = formatDate(selectedDate);
+    fetch(`/api/habit-logs/toggle/${habitId}?log_date=${dateStr}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(() => {
+        loadMonthlyData();
+        renderHabitCheckList();
+    });
+}
+
+function prevMonth() {
+    currentMonth--;
+    if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+    }
+    loadMonthlyData();
+}
+
+function nextMonth() {
+    currentMonth++;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    }
+    loadMonthlyData();
+}
+
+function goToToday() {
+    const today = new Date();
+    currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
+    selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    loadMonthlyData();
+}
+</script>
+{% endblock %}
